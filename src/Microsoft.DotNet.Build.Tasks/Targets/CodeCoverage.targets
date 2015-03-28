@@ -7,7 +7,7 @@
   <PropertyGroup>
     <OpenCoverVersion>4.5.3809-rc94</OpenCoverVersion>
     <ReportGeneratorVersion>2.0.4.0</ReportGeneratorVersion>
-    <CoverallsUploaderVersion>1.3</CoverallsUploaderVersion>
+    <CoverallsUploaderVersion>1.4</CoverallsUploaderVersion>
   </PropertyGroup>
   
   <!-- Coverage options -->
@@ -75,7 +75,8 @@
          Condition="'$(GenerateFullCoverageReport)'=='true'">
 
     <Exec Command="$(CoverageReportGeneratorCommandLine) -reports:$(CoverageReportDir)\*.coverage.xml"
-          ContinueOnError="ErrorAndContinue" />
+          ContinueOnError="ErrorAndContinue"
+          WorkingDirectory="$(ProjectDir)" />
 
     <PropertyGroup>
       <CoverallsUploaderCommandLine>$(PackagesDir)coveralls.io.$(CoverallsUploaderVersion)\tools\coveralls.net.exe</CoverallsUploaderCommandLine>
@@ -84,6 +85,7 @@
 
     <Exec Command="$(CoverallsUploaderCommandLine) $(CoverallsUploaderOptions)"
           ContinueOnError="ErrorAndContinue"
+          WorkingDirectory="$(ProjectDir)"
           Condition="'$(UploadCoverallsData)'=='true'" />
 
   </Target>
