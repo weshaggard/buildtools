@@ -20,6 +20,7 @@
     <TestCategoriesItems Include="$(TestCategories)" />
     <RunTestsWithCategoriesItems Include="$(RunTestsWithCategories)" />
     <RunTestsWithoutCategoriesItems Include="$(RunTestsWithoutCategories)" />
+    <UnsupportedPlatformsItems Include="$(UnsupportedPlatforms)"/>
   </ItemGroup>
 
   <!-- General xunit options -->
@@ -46,23 +47,27 @@
 
   <!-- In VS (2015 Preview or later currently required): Debug to run unit tests on CoreCLR. -->
   <PropertyGroup Condition="'$(IsTestProject)'=='true'">
-    <DebugTestFrameworkFolder>aspnetcore50</DebugTestFrameworkFolder>
+    <DebugTestFrameworkFolder>dnxcore50</DebugTestFrameworkFolder>
     <StartWorkingDirectory Condition="'$(StartWorkingDirectory)'==''">$(TestPath)$(DebugTestFrameworkFolder)</StartWorkingDirectory>
     <StartAction Condition="'$(StartAction)'==''">Program</StartAction>
     <StartProgram Condition="'$(StartProgram)'==''">$(StartWorkingDirectory)\$(TestHost)</StartProgram>
     <StartArguments Condition="'$(StartArguments)'==''">$(VSStartArguments)</StartArguments>
     <DebugEngines>{2E36F1D4-B23C-435D-AB41-18E608940038}</DebugEngines>
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <TestTargetFramework Include="ASP.NetCore, version=v5.0">
-      <Folder>aspnetcore50</Folder>
+    <TestTargetFramework Include="DNXCore, version=v5.0">
+      <Folder>dnxcore50</Folder>
     </TestTargetFramework>
   </ItemGroup>
 
   <ItemGroup>
     <PackagesConfigs Include="$(ProjectPackagesConfigFile)" />
     <PackagesConfigs Include="$(TestRuntimePackageConfig)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectJsons Include="$(TestRuntimeProjectJson)" />
   </ItemGroup>
 
   <Target Name="DiscoverTestInputs" DependsOnTargets="ResolveProjectReferences;ResolveAssemblyReferences;GetCopyToOutputDirectoryItems">
@@ -81,7 +86,7 @@
           DependsOnTargets="DiscoverTestInputs"
           AfterTargets="CheckTestCategories"
           Inputs="@(RunTestsForProjectInputs)"
-          Outputs="$(TestPath)%(TestTargetFramework.Folder)\$(TestsSuccessfulSemaphore);$(TestPath)%(TestTargetFramework.Folder)\$(XunitResultsFileName)"
+          Outputs="$(TestPath)%(TestTargetFramework.Folder)\$(TestsSuccessfulSemaphore);$(TestPath)%(TestTargetFramework.Folder)\$(XunitResultsFileName);$(CoverageOutputFilePath)"
           Condition="'$(TestDisabled)'!='true'">
 
     <CallTarget Targets="CopyTestToTestDirectory"/>
@@ -119,7 +124,7 @@
 
   <!-- Needs to run before RunTestsForProject target as it computes categories and set TestDisabled -->
   <Target Name="CheckTestCategories"
-          AfterTargets="Test"
+          AfterTargets="CheckTestPlatforms"
           Condition="'$(TestDisabled)'!='true'">
 
     <Error Condition="'$(RunTestsWithCategories)' != '' And '$(RunTestsWithoutCategories)' != ''"
@@ -141,7 +146,7 @@
       <RunWithoutTraits Condition="'@(RunWithInnerLoopItems)'!=''" Include="@(TestCategoriesItems)" Exclude="@(TestCategoriesToRun)" />
     </ItemGroup>
 
-    <!-- If there is nothing to run then disable the test -->
+    <!-- If there is nothing to run, then disable the test -->
     <PropertyGroup>
       <TestDisabled Condition="'@(TestCategoriesToRun)'==''">true</TestDisabled>
     </PropertyGroup>
@@ -152,4 +157,12 @@
     </PropertyGroup>
   </Target>
 
+  <Target Name="CheckTestPlatforms"
+  		  AfterTargets="Test"
+  		  Condition="'$(TestDisabled)'!='true'">
+  	<PropertyGroup>
+      <IsWindowsAssembly Condition="'$(OS)'=='Windows_NT' And '%(UnsupportedPlatformsItems.Identity)'=='Windows_NT'">false</IsWindowsAssembly>
+      <TestDisabled Condition="'$(IsWindowsAssembly)'=='false'">true</TestDisabled>
+    </PropertyGroup>
+  </Target>
 </Project>
