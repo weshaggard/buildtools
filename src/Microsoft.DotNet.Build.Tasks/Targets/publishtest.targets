@@ -24,8 +24,29 @@
           DependsOnTargets="DiscoverTestInputs">
     <ItemGroup>
       <TestNugetProjectLockFile Include="$(ProjectLockJson)" Condition="Exists($(ProjectLockJson))"/>
-      <TestNugetProjectLockFile Include="$(TestRuntimeProjectLockJson)" Condition="Exists($(TestRuntimeProjectLockJson))"/>
-    </ItemGroup>
+      <TestNugetProjectLockFile Include="$(TestRuntimeProjectLockJson)" Condition="Exists($(TestRuntimeProjectLockJson)) and '$(UseSharedTestRuntime)'!='true'"/>
+    </ItemGroup> 
+
+    <PrereleaseResolveNuGetPackageAssets Condition="'$(UseSharedTestRuntime)' == 'true'"
+                               AllowFallbackOnTargetSelection="true"
+                               IncludeFrameworkReferences="false"
+                               NuGetPackagesDirectory="$(PackagesDir)"
+                               RuntimeIdentifier="$(TestNugetRuntimeId)"
+                               ProjectLanguage="$(Language)"
+                               ProjectLockFile="$(TestRuntimeProjectLockJson)"
+                               TargetMonikers="@(TestTargetFramework)">
+      <Output TaskParameter="ResolvedCopyLocalItems" ItemName="TestRuntimeCopyLocal" />
+    </PrereleaseResolveNuGetPackageAssets>
+
+    <!-- Copy the runtime and libraries into the flat shared path $(TestSharedRuntimePath) -->
+    <Copy
+      Condition="'@(TestRuntimeCopyLocal)' != ''"
+      SourceFiles="@(TestRuntimeCopyLocal)" 
+      DestinationFolder="$(TestSharedRuntimePath)" 
+      SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
+      OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)"
+      Retries="$(CopyRetryCount)"
+      RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)" />
 
     <PrereleaseResolveNuGetPackageAssets Condition="'@(TestNugetProjectLockFile)' != ''"
                                AllowFallbackOnTargetSelection="true"

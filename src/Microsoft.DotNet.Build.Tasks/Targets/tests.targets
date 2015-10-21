@@ -26,14 +26,21 @@
   <PropertyGroup Condition="'$(TestWithCore)' == 'true'">
     <TestRuntimeProjectJson Condition="'$(TestRuntimeProjectJson)' == ''">$(MSBuildThisFileDirectory)test-runtime\project.json</TestRuntimeProjectJson>
     <TestRuntimeProjectLockJson Condition="'$(TestRuntimeProjectLockJson)' == ''">$(MSBuildThisFileDirectory)test-runtime\project.lock.json</TestRuntimeProjectLockJson>
+    <DebugTestFrameworkFolder>dnxcore50</DebugTestFrameworkFolder>
+
     <!-- Invoke with the correct casing of corerun per-OS.  There are some process tests
          that check the invoked process name against known casing which fail under code coverage.
          This is probably because the code coverage target invocation does not canonicalize the
          process name. -->
     <TestHost Condition="'$(OS)' == 'Windows_NT'">CoreRun.exe</TestHost>
     <TestHost Condition="'$(OS)' != 'Windows_NT'">corerun</TestHost>
+    
+    <TestSharedRuntimePath>$(IntermediateOutputRootPath)\TestRuntime</TestSharedRuntimePath>
+    <TestHostCmd>$(TestHost)</TestHostCmd>
+    
+    <TestHostCmd Condition="'$(UseSharedTestRuntime)'=='true'">set CORE_LIBRARIES=$(TestPath)$(DebugTestFrameworkFolder)&amp; $(TestSharedRuntimePath)\$(TestHostCmd)</TestHostCmd>
     <XunitExecutable Condition="'$(XunitExecutable)' == ''">xunit.console.netcore.exe</XunitExecutable>
-    <DebugTestFrameworkFolder>dnxcore50</DebugTestFrameworkFolder>
+
     <DebugEngines>{2E36F1D4-B23C-435D-AB41-18E608940038}</DebugEngines>
   </PropertyGroup>
 
@@ -62,12 +69,11 @@
     <XunitOptions Condition="'$(XunitMaxThreads)'!=''">$(XunitOptions) -maxthreads $(XunitMaxThreads)</XunitOptions>
     <XunitArguments>$(TargetFileName) $(XunitOptions)</XunitArguments>
 
-    <TestProgram Condition="'$(TestHost)'!=''">$(TestHost)</TestProgram>
-    <TestArguments Condition="'$(TestHost)'!=''">$(XunitExecutable) $(XunitArguments)</TestArguments>
+    <TestProgram Condition="'$(TestHostCmd)'!=''">$(TestHostCmd)</TestProgram>
+    <TestArguments Condition="'$(TestHostCmd)'!=''">$(XunitExecutable) $(XunitArguments)</TestArguments>
 
-    <TestProgram Condition="'$(TestHost)'==''">$(XunitExecutable)</TestProgram>
-    <TestArguments Condition="'$(TestHost)'==''">$(XunitArguments)</TestArguments>
-
+    <TestProgram Condition="'$(TestHostCmd)'==''">$(XunitExecutable)</TestProgram>
+    <TestArguments Condition="'$(TestHostCmd)'==''">$(XunitArguments)</TestArguments>
     <TestCommandLine>$(TestProgram) $(TestArguments) {XunitTraitOptions}</TestCommandLine>
   </PropertyGroup>
 
@@ -111,6 +117,13 @@
           Inputs="@(RunTestsForProjectInputs)"
           Outputs="$(TestsSuccessfulSemaphore);$(TestPath)%(TestTargetFramework.Folder)\$(XunitResultsFileName);$(CoverageOutputFilePath)"
           Condition="'$(TestDisabled)'!='true'">
+          
+
+    <Copy
+      Condition="'$(UseSharedTestRuntime)' == 'true'"
+      SourceFiles="$(TestSharedRuntimePath)\$(XunitExecutable)" 
+      DestinationFolder="$(TestPath)%(TestTargetFramework.Folder)" 
+      SkipUnchangedFiles="true" />
 
     <PropertyGroup>
       <XunitTraitOptions Condition="'@(RunWithTraits)'!=''">$(XunitTraitOptions) -trait category=@(RunWithTraits, ' -trait category=') </XunitTraitOptions>
